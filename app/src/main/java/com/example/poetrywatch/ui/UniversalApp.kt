@@ -21,6 +21,7 @@ import com.example.poetrywatch.ui.quiz.QuizScreen
 import com.example.poetrywatch.ui.settings.SettingsScreen
 import com.example.poetrywatch.ui.theme.LocalPoetryColors
 import com.example.poetrywatch.ui.theme.UniversalTheme
+import com.example.poetrywatch.ui.theme.WatchScaffold
 
 @Composable
 fun UniversalApp(
@@ -31,24 +32,28 @@ fun UniversalApp(
         val colors = LocalPoetryColors.current
         val navController = rememberNavController()
 
-        NavHost(
-            navController = navController,
-            startDestination = Routes.HOME,
-            modifier = Modifier.fillMaxSize().background(colors.background)
+        WatchScaffold(
+            modifier = Modifier.background(colors.background)
         ) {
-            composable(Routes.HOME) { HomeScreen(navController) }
-            composable(Routes.LIBRARY) { LibraryScreen(navController) }
-            composable(
-                route = Routes.DETAIL,
-                arguments = listOf(navArgument("poemId") { type = NavType.StringType })
-            ) { DetailScreen(navController) }
-            composable(Routes.PRACTICE) { PracticeScreen(navController) }
-            composable(
-                route = Routes.QUIZ,
-                arguments = listOf(navArgument("poemId") { type = NavType.StringType })
-            ) { QuizScreen(navController) }
-            composable(Routes.MANAGE) { ManageScreen() }
-            composable(Routes.SETTINGS) { SettingsScreen() }
+            NavHost(
+                navController = navController,
+                startDestination = Routes.HOME,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                composable(Routes.HOME) { HomeScreen(navController) }
+                composable(Routes.LIBRARY) { LibraryScreen(navController) }
+                composable(
+                    route = Routes.DETAIL,
+                    arguments = listOf(navArgument("poemId") { type = NavType.StringType })
+                ) { DetailScreen(navController) }
+                composable(Routes.PRACTICE) { PracticeScreen(navController) }
+                composable(
+                    route = Routes.QUIZ,
+                    arguments = listOf(navArgument("poemId") { type = NavType.StringType })
+                ) { QuizScreen(navController) }
+                composable(Routes.MANAGE) { ManageScreen() }
+                composable(Routes.SETTINGS) { SettingsScreen() }
+            }
         }
     }
 }

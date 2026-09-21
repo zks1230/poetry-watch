@@ -3,6 +3,7 @@ package com.example.poetrywatch.di
 import android.content.Context
 import androidx.room.Room
 import com.example.poetrywatch.data.db.PoetryDatabase
+import com.example.poetrywatch.data.db.PoetryDatabaseFactory
 import com.example.poetrywatch.data.db.dao.PoemDao
 import com.example.poetrywatch.data.db.dao.ProgressDao
 import com.example.poetrywatch.data.preferences.PreferencesRepository
@@ -21,9 +22,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): PoetryDatabase =
-        Room.databaseBuilder(context, PoetryDatabase::class.java, PoetryDatabase.NAME)
-            .build()
+    fun provideDatabase(factory: PoetryDatabaseFactory): PoetryDatabase = factory.db
 
     @Provides
     fun providePoemDao(db: PoetryDatabase): PoemDao = db.poemDao()
