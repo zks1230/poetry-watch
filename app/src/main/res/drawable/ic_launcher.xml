@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 背景：深色圆角 -->
+    <path
+        android:fillColor="#0F1115"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- 圆环（代表月亮/诗意） -->
+    <path
+        android:fillColor="#D9B35C"
+        android:pathData="M54,28a26,26 0 1,0 0.001,0z" />
+    <!-- 代表山与江水的线条 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#ECEDF0"
+        android:strokeWidth="3"
+        android:pathData="M14,74 L34,54 L44,68 L60,40 L74,58 L94,34" />
+</vector>

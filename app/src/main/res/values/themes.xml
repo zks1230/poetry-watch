@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 基础主题，具体颜色在 Compose 中控制 -->
+    <style name="Theme.PoetryWatch" parent="android:Theme.Material.NoActionBar" />
+    <style name="Theme.PoetryWatch.Starting" parent="Theme.PoetryWatch" />
+
+    <!-- 竖屏/圆屏支持 -->
+    <style name="Theme.PoetryWatch.SplashScreen" parent="Theme.PoetryWatch" />
+</resources>

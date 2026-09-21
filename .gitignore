@@ -1,0 +1,25 @@
+﻿# Android / Gradle
+*.iml
+.gradle/
+local.properties
+build/
+.build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.keystore
+*.jks
+*.apk.unaligned
+
+# IDE
+.idea/
+.vscode/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# APK 产物（可选保留就注释掉下面一行）
+app/build/outputs/apk/

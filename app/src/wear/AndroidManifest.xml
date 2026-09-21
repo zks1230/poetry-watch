@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Wear OS 版：声明手表硬件特性 -->
+    <uses-feature
+        android:name="android.hardware.type.watch"
+        android:required="true" />
+</manifest>
