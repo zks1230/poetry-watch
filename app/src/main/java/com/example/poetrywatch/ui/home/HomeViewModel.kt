@@ -10,6 +10,7 @@ import com.example.poetrywatch.domain.recommend.RecommendationEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -25,23 +26,26 @@ class HomeViewModel @Inject constructor(
 
     private val progressMap: StateFlow<Map<String, ProgressEntity>> = repository.allProgress()
         .map { list -> list.associateBy { it.poemId } }
+        .catch { emit(emptyMap()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val uiState: StateFlow<HomeUiState> = combine(
-        repository.allPoems(),
+        repository.allPoems().catch { emit(emptyList()) },
         progressMap
     ) { poems, progs ->
-        val recommended = engine.recommend(poems, progs, LocalDate.now())
+        // 推荐算法出错也不能让整个页面挂掉
+        val recommended = runCatching { engine.recommend(poems, progs, LocalDate.now()) }.getOrNull()
         HomeUiState(
-            recommended = recommended,
+            recommended = recommended ?: poems.firstOrNull(),
             poemCount = poems.size,
             learningCount = progs.values.count { it.status == StudyStatus.LEARNING },
             masteredCount = progs.values.count { it.status == StudyStatus.MASTERED }
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
+    }.catch { emit(HomeUiState()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
     fun addToPractice(poemId: String) {
-        viewModelScope.launch { repository.activatePoem(poemId) }
+        viewModelScope.launch { runCatching { repository.activatePoem(poemId) } }
     }
 }
 

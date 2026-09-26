@@ -9,6 +9,7 @@ import com.example.poetrywatch.data.repository.PoetryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -22,9 +23,11 @@ class PracticeViewModel @Inject constructor(
 
     private val progressMap: StateFlow<Map<String, ProgressEntity>> = repository.allProgress()
         .map { list -> list.associateBy { it.poemId } }
+        .catch { emit(emptyMap()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     private val poems: StateFlow<List<PoemEntity>> = repository.allPoems()
+        .catch { emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val uiState: StateFlow<PracticeUiState> = combine(poems, progressMap) { p, pr ->
@@ -33,10 +36,11 @@ class PracticeViewModel @Inject constructor(
             learning = p.filter { (pr[it.id]?.status ?: StudyStatus.NOT_STARTED) == StudyStatus.LEARNING },
             mastered = p.filter { (pr[it.id]?.status ?: StudyStatus.NOT_STARTED) == StudyStatus.MASTERED }
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PracticeUiState())
+    }.catch { emit(PracticeUiState()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PracticeUiState())
 
     fun addToPractice(poemId: String) {
-        viewModelScope.launch { repository.activatePoem(poemId) }
+        viewModelScope.launch { runCatching { repository.activatePoem(poemId) } }
     }
 }
 

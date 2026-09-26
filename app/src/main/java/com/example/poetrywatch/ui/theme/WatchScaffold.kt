@@ -1,5 +1,6 @@
 package com.example.poetrywatch.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.aspectRatio
@@ -13,42 +14,64 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import com.example.poetrywatch.data.preferences.ScreenShape
 
 /**
- * 汉克米风格的屏幕适配容器
+ * 手表屏幕适配容器（汉克米风格）
  *
- * 圆形表盘：内容被约束在中心方形区域，四角留白，避免文字被边缘裁切。
- * 方形表盘：内容居中，四周少量 padding。
+ * 形状来自用户在首次启动时选择的 [ScreenProfile]：
+ * - [ScreenShape.ROUND]  圆形表盘：内容收进中心方形区域，四角留白，避免文字被表壳裁切
+ * - [ScreenShape.SQUARE] 方形表盘：铺满屏幕，只留少量安全边距
+ * - [ScreenShape.WIDE]   长方形表盘：左右留白，避免长条屏幕两侧被裁
+ * - [ScreenShape.AUTO]   自动：读取系统 isScreenRound 标志
+ *
+ * 安全区档位（SafeArea）统一控制内缩距离，用户觉得文字被吃掉时可以调大。
  */
 @Composable
 fun WatchScaffold(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val isRound = LocalConfiguration.current.isScreenRound
+    val profile = LocalScreenProfile.current
+    val isRound = when (profile.shape) {
+        ScreenShape.ROUND -> true
+        ScreenShape.SQUARE, ScreenShape.WIDE -> false
+        ScreenShape.AUTO -> systemIsRound()
+    }
+    val inset = profile.safeArea.insetDp.dp
 
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        if (isRound) {
-            // 圆形屏：中心方形 + 圆角裁剪 + 额外 padding
-            Box(
+        when {
+            // 圆形屏：中心方形 + 圆角裁剪 + 安全区 padding
+            isRound -> Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .padding(12.dp)
+                    .padding(inset)
                     .clip(RoundedCornerShape(28.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 content()
             }
-        } else {
-            // 方形屏：直接填满，少量 padding 让按钮不贴边
-            Box(
+
+            // 长方形屏：左右留白多一些
+            profile.shape == ScreenShape.WIDE -> Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                    .padding(horizontal = inset + 8.dp, vertical = inset / 2),
+                contentAlignment = Alignment.Center
+            ) {
+                content()
+            }
+
+            // 方形屏：填满，只留少量边距
+            else -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = inset / 2, vertical = inset / 3),
                 contentAlignment = Alignment.Center
             ) {
                 content()
@@ -56,3 +79,12 @@ fun WatchScaffold(
         }
     }
 }
+
+/** 读取系统圆屏标志；Configuration.isScreenRound 需要 API 23，低版本直接按方屏处理 */
+@Composable
+private fun systemIsRound(): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        LocalConfiguration.current.isScreenRound
+    } else {
+        false
+    }

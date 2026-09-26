@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 import javax.inject.Inject
 
 /** 一道接龙题：给出上句，从 options 选出下句 correct */
@@ -31,7 +30,8 @@ class QuizViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val poemId: String = checkNotNull(savedStateHandle["poemId"])
+    /** 取不到 id 也不要崩，走错误提示分支 */
+    private val poemId: String = savedStateHandle.get<String>("poemId").orEmpty()
 
     private val _poem = MutableStateFlow<PoemEntity?>(null)
     val poem: StateFlow<PoemEntity?> = _poem
@@ -54,12 +54,38 @@ class QuizViewModel @Inject constructor(
     private val _result = MutableStateFlow<QuizResult?>(null)
     val result: StateFlow<QuizResult?> = _result
 
+    private val _loading = MutableStateFlow(true)
+    val loading: StateFlow<Boolean> = _loading
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
     init {
+        load()
+    }
+
+    /**
+     * 任何异常都收敛成界面上的错误提示，绝不让 App 直接崩掉。
+     */
+    fun load() {
+        _loading.value = true
+        _error.value = null
         viewModelScope.launch {
-            val target = repository.getPoem(poemId) ?: return@launch
-            _poem.value = target
-            val others = repository.allPoems().first()
-            _questions.value = generateQuestions(target, others)
+            runCatching {
+                check(poemId.isNotBlank()) { "没有拿到诗词编号" }
+                val target = repository.getPoem(poemId)
+                    ?: throw IllegalStateException("诗词不存在或已被删除")
+                _poem.value = target
+                val others = runCatching { repository.allPoems().first() }.getOrDefault(emptyList())
+                _questions.value = QuizQuestionFactory.build(target, others)
+            }.onFailure { throwable ->
+                _error.value = buildString {
+                    append("检测题生成失败：")
+                    append(throwable.javaClass.simpleName)
+                    throwable.message?.let { append(" · ").append(it) }
+                }
+            }
+            _loading.value = false
         }
     }
 
@@ -89,56 +115,7 @@ class QuizViewModel @Inject constructor(
         _result.value = QuizResult(correct, total)
         viewModelScope.launch {
             // 全部作对视为巩固，否则标记需复习
-            repository.recordResult(poemId, correct >= total)
+            runCatching { repository.recordResult(poemId, correct >= total) }
         }
-    }
-
-    private suspend fun generateQuestions(target: PoemEntity, others: List<PoemEntity>): List<QuizQuestion> {
-        val lines = toCouplets(target)
-        if (lines.isEmpty()) return emptyList()
-
-        // 干扰句候选池
-        val distractionPool = (others.filter { it.id != target.id }
-            .flatMap { toPhraseFragments(it) } + toPhraseFragments(target))
-            .distinct()
-            .toMutableList()
-
-        return lines.shuffled(Random).take(5).map { (prompt, answer) ->
-            val wrong = distractionPool
-                .filter { it != answer }
-                .shuffled(Random)
-                .take(3)
-                .ifEmpty {
-                    listOf("望明月", "听雨声", "忆故人")
-                }
-            QuizQuestion(
-                prompt = prompt,
-                correct = answer,
-                options = (wrong + answer).shuffled(Random)
-            )
-        }
-    }
-
-    /** 将诗歌切分为【上句, 下句】对（含标点分隔），返回 list */
-    private fun toCouplets(poem: PoemEntity): List<Pair<String, String>> =
-        poem.content.lines()
-            .mapNotNull { line ->
-                val idx = line.indexOfFirst { it in DELIMITERS }
-                if (idx > 0 && idx < line.lastIndex) {
-                    line.substring(0, idx + 1).trim() to line.substring(idx + 1).trim()
-                } else null
-            }
-
-    /** 收集诗行中的短语片段作为干扰项 */
-    private fun toPhraseFragments(poem: PoemEntity): List<String> =
-        poem.content.lines()
-            .flatMap { line ->
-                line.split(*DELIMITERS.toCharArray())
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() && it.length >= 2 }
-            }
-
-    companion object {
-        private const val DELIMITERS = "，。；？！、"
     }
 }

@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
@@ -46,6 +46,8 @@ android {
     }
 
     compileOptions {
+        // 老安卓（API 21~25）没有 java.time，开启脱糖避免 NoClassDefFoundError 闪退
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -66,6 +68,14 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    testOptions {
+        unitTests {
+            // Robolectric 需要读取 app 的资源（否则检测页 / 适配向导没法在电脑上渲染测试）
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
         }
     }
 }
@@ -109,6 +119,20 @@ dependencies {
 
             implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.foundation:foundation")
+
+    // 脱糖库（java.time 等新 API 在老安卓上的兼容实现）
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
+    // 单元测试
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // 在电脑上渲染 Compose 界面（Robolectric），用来验证"点了就闪退"这类问题
+    testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation("androidx.test:core:1.5.0")
+    testImplementation("androidx.test.ext:junit:1.1.5")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    // Robolectric 跑 Compose 测试需要一个宿主 Activity，它来自 ui-test-manifest（必须挂到 debug 变体上）
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 

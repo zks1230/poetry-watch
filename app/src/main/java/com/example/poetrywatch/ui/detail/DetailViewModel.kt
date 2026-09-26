@@ -19,7 +19,8 @@ class DetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val poemId: String = checkNotNull(savedStateHandle["poemId"])
+    /** 取不到 id 也不再抛异常导致闪退 */
+    private val poemId: String = savedStateHandle.get<String>("poemId").orEmpty()
 
     private val _poem = MutableStateFlow<PoemEntity?>(null)
     val poem: StateFlow<PoemEntity?> = _poem
@@ -27,30 +28,50 @@ class DetailViewModel @Inject constructor(
     private val _progress = MutableStateFlow<ProgressEntity?>(null)
     val progress: StateFlow<ProgressEntity?> = _progress
 
+    private val _loaded = MutableStateFlow(false)
+    val loaded: StateFlow<Boolean> = _loaded
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
     init {
+        load()
+    }
+
+    fun load() {
         viewModelScope.launch {
-            _poem.value = repository.getPoem(poemId)
+            runCatching {
+                check(poemId.isNotBlank()) { "没有拿到诗词编号" }
+                _poem.value = repository.getPoem(poemId)
+            }.onFailure { throwable ->
+                _error.value = "读取诗词失败：${throwable.javaClass.simpleName}"
+            }
+            refreshProgress()
+            _loaded.value = true
         }
-        refreshProgress()
     }
 
     fun refreshProgress() {
         viewModelScope.launch {
-            _progress.value = repository.getProgress(poemId)
+            runCatching { _progress.value = repository.getProgress(poemId) }
         }
     }
 
     fun setStatus(status: StudyStatus) {
         viewModelScope.launch {
-            repository.updateStatus(poemId, status)
-            refreshProgress()
+            runCatching {
+                repository.updateStatus(poemId, status)
+                _progress.value = repository.getProgress(poemId)
+            }
         }
     }
 
     fun addToPractice() {
         viewModelScope.launch {
-            repository.activatePoem(poemId)
-            refreshProgress()
+            runCatching {
+                repository.activatePoem(poemId)
+                _progress.value = repository.getProgress(poemId)
+            }
         }
     }
 }
